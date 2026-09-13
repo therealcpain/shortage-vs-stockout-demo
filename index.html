@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shortage vs Stockout — FDA national shortage YES/NO card</title>
+  <meta name="description" content="Type a drug name. Get one shareable card: FDA national shortage YES/NO/UNKNOWN, plus the plain truth that your pharmacy empty ≠ national shortage. Cite FDA. Not medical advice.">
+  <meta name="theme-color" content="#0c1016">
+  <meta property="og:title" content="Shortage vs Stockout">
+  <meta property="og:description" content="Drug name → FDA national shortage YES/NO card. Pharmacy empty ≠ national shortage. Cite FDA. Not medical advice.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="site">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">SV</div>
+        <div>
+          <h1>Shortage vs Stockout</h1>
+          <p class="tagline">Drug name → FDA national YES/NO. Pharmacy empty ≠ national shortage.</p>
+        </div>
+      </div>
+      <span class="badge">Not medical advice</span>
+    </header>
+
+    <aside class="myth-banner" role="note">
+      <strong>Medical disclaimer.</strong>
+      This card is literacy — <em>not</em> medical advice and <em>not</em> a substitute for your pharmacist, prescriber, or the FDA Drug Shortage Database.
+      Do not start, stop, or ration medicine based on this page. Always talk to a clinician or pharmacist about refill options.
+    </aside>
+
+    <section class="panel lookup" aria-labelledby="lookup-heading">
+      <h2 id="lookup-heading">1. Look up a drug</h2>
+      <div class="row">
+        <div class="grow">
+          <label for="queryInput">Drug name (brand or generic)</label>
+          <input id="queryInput" type="text" list="drugSuggestions" placeholder="e.g. Adderall · Vyvanse · metformin · lidocaine" autocomplete="off" />
+          <datalist id="drugSuggestions"></datalist>
+        </div>
+        <button type="button" class="btn btn-primary" id="lookupBtn" style="align-self:flex-end">Show status card</button>
+      </div>
+      <p class="hint">
+        Live path: openFDA Drug Shortages API (<code>api.fda.gov/drug/shortages.json</code>, CORS <code>*</code>, Public Domain / CC0).
+        Seeds below are a <strong>labeled snapshot</strong> from the openFDA download (dataset last updated <span id="seedAsOf">—</span>) — we never invent shortage rows.
+      </p>
+      <div class="seed-chips" id="seedChips" role="list" aria-label="Demo drug seeds"></div>
+      <div class="mode-row">
+        <label class="check">
+          <input type="checkbox" id="preferLive" checked />
+          Prefer live openFDA when available
+        </label>
+      </div>
+    </section>
+
+    <section class="panel card-panel" aria-labelledby="card-heading" id="cardSection" hidden>
+      <div class="card-toolbar">
+        <h2 id="card-heading">2. Shareable status card</h2>
+        <div class="actions">
+          <button type="button" class="btn" id="copyCard">Copy summary</button>
+          <button type="button" class="btn" id="shareBtn">Share link</button>
+          <button type="button" class="btn" id="pngBtn">Export PNG</button>
+        </div>
+      </div>
+
+      <article class="status-card" id="statusCard">
+        <header class="card-head">
+          <div>
+            <p class="brand-line">Shortage vs Stockout</p>
+            <p class="meta-line" id="cardDrug">—</p>
+            <p class="as-of" id="cardAsOf">—</p>
+            <h3 id="cardHeadline">—</h3>
+          </div>
+          <div class="status-badge unknown" id="statusBadge" role="img" aria-label="National shortage status">
+            <span class="status-kicker">FDA national shortage</span>
+            <span class="status-word" id="statusWord">—</span>
+            <span class="status-sub" id="statusSub">—</span>
+          </div>
+        </header>
+
+        <div class="detail-grid">
+          <div class="detail-tile">
+            <span class="k">FDA list status</span>
+            <span class="v" id="fdaStatusLine">—</span>
+          </div>
+          <div class="detail-tile">
+            <span class="k">Availability note</span>
+            <span class="v" id="availLine">—</span>
+          </div>
+          <div class="detail-tile">
+            <span class="k">First posted (FDA)</span>
+            <span class="v" id="postedLine">—</span>
+          </div>
+          <div class="detail-tile">
+            <span class="k">Last update (FDA)</span>
+            <span class="v" id="updateLine">—</span>
+          </div>
+        </div>
+
+        <aside class="literacy-callout" role="note">
+          <strong>Pharmacy empty ≠ national shortage</strong>
+          <p id="literacyLine">
+            One store (or chain) out of stock is often temporary distribution, a different NDC/strength, or local demand —
+            not automatically an FDA national shortage. Check the national status before driving store-to-store.
+          </p>
+        </aside>
+
+        <aside class="ask-callout" role="note">
+          <h4>What to ask next</h4>
+          <ul id="askList">
+            <li>—</li>
+          </ul>
+        </aside>
+
+        <aside class="watch-note" role="note">
+          <strong>Not medical advice.</strong>
+          Not a substitute for your pharmacist, prescriber, or
+          <a href="https://www.accessdata.fda.gov/scripts/drugshortages/default.cfm" target="_blank" rel="noopener noreferrer">FDA Drug Shortages</a>.
+          Report a new shortage to FDA when appropriate. Do not change your regimen from this card.
+        </aside>
+
+        <footer class="card-foot">
+          <div class="sources" id="sourceLine">Sources: —</div>
+          <div class="source-links" id="sourceLinks"></div>
+        </footer>
+      </article>
+
+      <div class="share-box" id="shareBox" hidden>
+        <label for="shareUrl">Share URL (hash = drug key)</label>
+        <div class="row">
+          <input id="shareUrl" type="text" readonly />
+          <button type="button" class="btn" id="copyShare" style="flex:0 0 auto">Copy</button>
+        </div>
+        <p class="hint">Append UTM when you post, e.g. <code>?utm_source=reddit&amp;utm_medium=organic&amp;utm_campaign=shortage_vs_stockout_mvp</code></p>
+      </div>
+      <p class="status" id="status" role="status"></p>
+    </section>
+
+    <section class="panel legend" aria-labelledby="legend-heading">
+      <h2 id="legend-heading">How to read the badge</h2>
+      <ul class="legend-list">
+        <li><span class="pill yes-pill">YES</span> FDA Drug Shortages lists a matching presentation as <strong>Current</strong> (national shortage program). Your pharmacy may still have stock of some NDCs.</li>
+        <li><span class="pill no-pill">NO</span> No <strong>Current</strong> national listing found for that lookup (or FDA marks it <strong>Resolved</strong>). A local empty shelf can still happen.</li>
+        <li><span class="pill unk-pill">UNKNOWN</span> We could not confirm from openFDA / seeds — we refuse to invent a status. Open the FDA database.</li>
+        <li><strong>Never invent shortage rows.</strong> Live results cite openFDA. Seeds show the snapshot date on the face.</li>
+      </ul>
+      <p class="hint">
+        Methodology:
+        <a href="https://www.fda.gov/drugs/drug-safety-and-availability/drug-shortages" target="_blank" rel="noopener noreferrer">FDA Drug Shortages</a> ·
+        <a href="https://www.fda.gov/drugs/drug-shortages/frequently-asked-questions-about-drug-shortages" target="_blank" rel="noopener noreferrer">FDA FAQs (national vs local)</a> ·
+        <a href="https://open.fda.gov/apis/drug/drugshortages/" target="_blank" rel="noopener noreferrer">openFDA Drug Shortages</a> ·
+        <a href="https://www.accessdata.fda.gov/scripts/drugshortages/default.cfm" target="_blank" rel="noopener noreferrer">searchable FDA DB</a>
+      </p>
+    </section>
+
+    <footer>
+      <strong>Shortage vs Stockout</strong> — national truth card before the store hop.
+      <ul>
+        <li>FDA national YES / NO / UNKNOWN · shareable status badge</li>
+        <li>“Pharmacy empty ≠ national shortage” literacy · pharmacist ask-line</li>
+        <li>Free utility · ad-supported path (see README) · not medical advice</li>
+      </ul>
+    </footer>
+    <canvas id="pngCanvas" width="720" height="1180" hidden aria-hidden="true"></canvas>
+  </div>
+</body>
+</html>
