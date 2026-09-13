@@ -362,9 +362,56 @@ input[type="text"]:focus {
   margin-bottom: 1rem;
 }
 
+.source-mode-pill {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-family: var(--mono);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: rgba(14, 20, 28, 0.55);
+}
+
+.source-mode-pill.live {
+  color: var(--accent);
+  border-color: rgba(94, 176, 255, 0.45);
+  background: rgba(94, 176, 255, 0.1);
+}
+.source-mode-pill.seed {
+  color: var(--warn);
+  border-color: rgba(240, 180, 41, 0.4);
+  background: rgba(240, 180, 41, 0.1);
+}
+.source-mode-pill.unknown {
+  color: var(--unk);
+  border-color: rgba(154, 164, 178, 0.45);
+  background: rgba(154, 164, 178, 0.1);
+}
+
+.status-badge.is-unknown-honest {
+  border-style: dashed;
+  opacity: 0.95;
+}
+
 @media (max-width: 560px) {
   .detail-grid { grid-template-columns: 1fr; }
-  .status-word { font-size: 2.35rem; }
+  /* One-glance: badge first, full-width, huge word */
+  .card-head {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .status-badge {
+    width: 100%;
+    min-width: 0;
+    padding: 1rem 1rem 1.1rem;
+  }
+  .status-word { font-size: 3.1rem; }
+  .status-sub { max-width: none; }
 }
 
 .detail-tile {

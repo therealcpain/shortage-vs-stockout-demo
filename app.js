@@ -884,8 +884,8 @@
     // Prefer brand then generic search; openFDA search syntax
     const attempts = [
       'openfda.brand_name:"' + q.replace(/"/g, "") + '"',
-      "generic_name:" + q.replace(/[^a-zA-Z0-9\\-\\s]/g, " ").trim(),
-      q.replace(/[^a-zA-Z0-9\\-\\s]/g, " ").trim(),
+      "generic_name:" + q.replace(/[^a-zA-Z0-9\-\s]/g, " ").trim(),
+      q.replace(/[^a-zA-Z0-9\-\s]/g, " ").trim(),
     ];
     let lastErr = null;
     for (let i = 0; i < attempts.length; i++) {
@@ -916,11 +916,14 @@
     $("cardSection").hidden = false;
 
     const badge = $("statusBadge");
-    badge.classList.remove("yes", "no", "unknown");
+    badge.classList.remove("yes", "no", "unknown", "is-unknown-honest");
     const ns = card.nationalShortage;
     if (ns === "YES") badge.classList.add("yes");
     else if (ns === "NO") badge.classList.add("no");
-    else badge.classList.add("unknown");
+    else {
+      badge.classList.add("unknown");
+      badge.classList.add("is-unknown-honest");
+    }
 
     $("statusWord").textContent = ns;
     $("statusSub").textContent =
@@ -930,6 +933,19 @@
           ? "Not a Current national listing"
           : "Could not confirm — not invented";
 
+    const modePill = $("sourceModePill");
+    modePill.classList.remove("live", "seed", "unknown");
+    if (card.sourceMode === "live") {
+      modePill.classList.add("live");
+      modePill.textContent = "LIVE · openFDA";
+    } else if (card.sourceMode === "unknown") {
+      modePill.classList.add("unknown");
+      modePill.textContent = "UNKNOWN · not invented";
+    } else {
+      modePill.classList.add("seed");
+      modePill.textContent = "SEED · snapshot " + (card.datasetLastUpdated || SEED_DATASET_LAST_UPDATED);
+    }
+
     const brandBit = (card.brands || []).slice(0, 3).join(" · ");
     $("cardDrug").textContent = brandBit
       ? brandBit + " · lookup: " + (card.query || card.label)
@@ -937,7 +953,9 @@
     $("cardAsOf").textContent =
       card.sourceMode === "live"
         ? "Source: live openFDA · checked just now in this browser"
-        : "Source: labeled seed · openFDA download last_updated " + (card.datasetLastUpdated || SEED_DATASET_LAST_UPDATED);
+        : card.sourceMode === "unknown"
+          ? "Source: unconfirmed — live miss / no seed · status not invented"
+          : "Source: labeled seed · openFDA download last_updated " + (card.datasetLastUpdated || SEED_DATASET_LAST_UPDATED);
     $("cardHeadline").textContent = card.genericName || card.label;
 
     $("fdaStatusLine").textContent = card.fdaStatus || "—";
@@ -990,7 +1008,7 @@
       "",
       "Not medical advice — not a substitute for pharmacist / prescriber / FDA.",
     ];
-    return lines.filter((x) => x !== "").join("\\n");
+    return lines.filter((x) => x !== "").join("\n");
   }
 
   function updateShare(card) {
@@ -1003,7 +1021,7 @@
   }
 
   function wrapText(ctx, text, x, y, maxW, lineH) {
-    const words = String(text || "").split(/\\s+/);
+    const words = String(text || "").split(/\s+/);
     let line = "";
     let yy = y;
     for (let i = 0; i < words.length; i++) {
@@ -1047,7 +1065,13 @@
 
     ctx.fillStyle = "#8a96a8";
     ctx.font = "400 13px IBM Plex Mono, monospace";
-    ctx.fillText(card.sourceMode === "live" ? "live openFDA check" : "seed · openFDA " + (card.datasetLastUpdated || ""), 48, 88);
+    const modeFace =
+      card.sourceMode === "live"
+        ? "LIVE · openFDA check"
+        : card.sourceMode === "unknown"
+          ? "UNKNOWN · not invented"
+          : "SEED · openFDA " + (card.datasetLastUpdated || "");
+    ctx.fillText(modeFace, 48, 88);
 
     ctx.fillStyle = "#e8eef6";
     ctx.font = "700 26px IBM Plex Sans, system-ui, sans-serif";
@@ -1110,7 +1134,7 @@
       }
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "shortage-vs-stockout-" + String(card.key || "card").replace(/\\W+/g, "-") + ".png";
+      a.download = "shortage-vs-stockout-" + String(card.key || "card").replace(/\W+/g, "-") + ".png";
       a.click();
       URL.revokeObjectURL(a.href);
       $("status").textContent = "PNG downloaded.";
@@ -1171,7 +1195,7 @@
               (seed.note || "");
           } else {
             card = {
-              key: "unk-" + norm(q).replace(/\\s+/g, "-").slice(0, 40),
+              key: "unk-" + norm(q).replace(/\s+/g, "-").slice(0, 40),
               label: q,
               query: q,
               genericName: q,
@@ -1197,13 +1221,32 @@
       }
 
       if (!card) {
-        $("cardSection").hidden = true;
-        $("status").textContent =
-          "No seed match and live lookup failed or was off. Enable prefer-live or tap a seed — we never invent shortage status.";
-        return;
+        // Prefer-live off (or exhausted) with no seed: honest UNKNOWN card — never invent YES/NO
+        card = {
+          key: "unk-" + norm(q).replace(/\s+/g, "-").slice(0, 40),
+          label: q,
+          query: q,
+          genericName: q,
+          brands: [],
+          nationalShortage: "UNKNOWN",
+          fdaStatus: "Unconfirmed",
+          availability: "",
+          therapeuticCategory: [],
+          initialPostingDate: "",
+          updateDate: "",
+          relatedInfo: "",
+          shortageReason: "",
+          sourceMode: "unknown",
+          sourceLabel: "No seed match" + (preferLive ? " and live path did not yield a card" : " · prefer-live was off") + " — status not invented",
+          datasetLastUpdated: "",
+          note: preferLive
+            ? "Enable a clearer drug name, tap a seed, or open the FDA Drug Shortage Database."
+            : "Turn on prefer-live openFDA, tap a labeled seed, or open the FDA Drug Shortage Database. We refuse to invent YES/NO.",
+          nMatches: null,
+        };
       }
 
-      if (!card.key) card.key = seed ? seed.key : "q-" + norm(q).replace(/\\s+/g, "-").slice(0, 40);
+      if (!card.key) card.key = seed ? seed.key : "q-" + norm(q).replace(/\s+/g, "-").slice(0, 40);
       renderCard(card);
       $("status").textContent =
         card.sourceMode === "live"
