@@ -563,3 +563,17 @@ footer ul {
   margin: 0.5rem 0 0;
   padding-left: 1.2rem;
 }
+
+.fazier-badge {
+  margin: 1rem 0 0;
+}
+
+.fazier-badge a {
+  display: inline-block;
+  line-height: 0;
+}
+
+.fazier-badge img {
+  height: auto;
+  vertical-align: middle;
+}
