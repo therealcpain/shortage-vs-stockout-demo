@@ -693,6 +693,35 @@
       .trim();
   }
 
+  /**
+   * GoatCounter events (Head of Data 2026-09-25). Stable names, no drug names / PII in paths.
+   * ssv-lookup · ssv-seed · ssv-out-fda · ssv-share-copy · ssv-share-link · ssv-share-png
+   * No-op when count.js is blocked or not yet loaded.
+   */
+  function gcEvent(name, title) {
+    try {
+      if (window.goatcounter && typeof window.goatcounter.count === "function") {
+        window.goatcounter.count({ path: name, title: title || name, event: true });
+      }
+    } catch (e) {
+      /* analytics must never break the card */
+    }
+  }
+
+  /** Query string without attribution params, so shared links don't inherit the sharer's channel. */
+  function searchWithoutAttribution() {
+    try {
+      const q = new URLSearchParams(location.search);
+      Array.from(q.keys()).forEach((k) => {
+        if (/^utm_/i.test(k) || /^(ref|src|source|campaign)$/i.test(k)) q.delete(k);
+      });
+      const out = q.toString();
+      return out ? "?" + out : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
   function findSeed(q) {
     const nq = norm(q);
     if (!nq) return null;
@@ -1017,7 +1046,7 @@
     if (location.hash !== hash) {
       history.replaceState(null, "", location.pathname + location.search + hash);
     }
-    $("shareUrl").value = location.origin + location.pathname + location.search + hash;
+    $("shareUrl").value = location.origin + location.pathname + searchWithoutAttribution() + hash;
   }
 
   function wrapText(ctx, text, x, y, maxW, lineH) {
@@ -1041,6 +1070,7 @@
 
   function exportPng() {
     if (!lastCard) return;
+    gcEvent("ssv-share-png", "Export PNG");
     const card = lastCard;
     const canvas = $("pngCanvas");
     const ctx = canvas.getContext("2d");
@@ -1248,6 +1278,7 @@
 
       if (!card.key) card.key = seed ? seed.key : "q-" + norm(q).replace(/\s+/g, "-").slice(0, 40);
       renderCard(card);
+      if (opts.userSubmit) gcEvent("ssv-lookup", "Lookup submitted → card rendered");
       $("status").textContent =
         card.sourceMode === "live"
           ? "Live openFDA card ready — copy, share, or export PNG."
@@ -1303,6 +1334,7 @@
       b.addEventListener("click", () => {
         $("queryInput").value = s.brands[0] || s.label;
         $("preferLive").checked = false;
+        gcEvent("ssv-seed", "Seed chip clicked");
         resolveAndRender(s.key, { fromChip: true, forceSeed: true });
       });
       box.appendChild(b);
@@ -1344,12 +1376,29 @@
     fillChips();
     fillDatalist();
 
-    $("lookupBtn").addEventListener("click", () => resolveAndRender($("queryInput").value));
+    $("lookupBtn").addEventListener("click", () => resolveAndRender($("queryInput").value, { userSubmit: true }));
     $("queryInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") resolveAndRender($("queryInput").value);
+      if (e.key === "Enter") resolveAndRender($("queryInput").value, { userSubmit: true });
     });
+    // Outbound official FDA links (static + card-rendered). One event name for all *.fda.gov hosts.
+    const onOutbound = (e) => {
+      const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+      if (!a) return;
+      let host = "";
+      try {
+        host = new URL(a.href, location.href).hostname.toLowerCase();
+      } catch (err) {
+        return;
+      }
+      if (host === "fda.gov" || host.endsWith(".fda.gov")) gcEvent("ssv-out-fda", "Outbound FDA link");
+    };
+    document.addEventListener("click", onOutbound, true);
+    document.addEventListener("auxclick", (e) => {
+      if (e.button === 1) onOutbound(e);
+    }, true);
     $("copyCard").addEventListener("click", async () => {
       if (!lastCard) return;
+      gcEvent("ssv-share-copy", "Copy summary");
       try {
         await navigator.clipboard.writeText(summaryText(lastCard));
         $("status").textContent = "Summary copied.";
@@ -1359,6 +1408,7 @@
     });
     $("shareBtn").addEventListener("click", async () => {
       if (!lastCard) return;
+      gcEvent("ssv-share-link", "Share link");
       updateShare(lastCard);
       const url = $("shareUrl").value || location.href;
       try {
@@ -1369,6 +1419,7 @@
       }
     });
     $("copyShare").addEventListener("click", async () => {
+      if ($("shareUrl").value) gcEvent("ssv-share-link", "Share link");
       try {
         await navigator.clipboard.writeText($("shareUrl").value);
         $("status").textContent = "Share URL copied.";
